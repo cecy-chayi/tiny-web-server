@@ -155,7 +155,8 @@ void Log::appendLogLevelTitle_(int level) {
     buff_.append(logLevelName[level], 9);
 }
 
-int Log::getlevel() {
+int Log::getLevel() {
+    std::lock_guard<std::mutex> lock(mtx_);
     return level_;
 }
 

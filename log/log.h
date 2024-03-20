@@ -25,7 +25,7 @@ public:
     void write(int level, const char *format, ...); // output in format
     void flush();
 
-    int getlevel();
+    int getLevel();
     void setLevel(int level);
     bool isopen() {return isOpen_; }
 private:
@@ -61,8 +61,8 @@ private:
 
 #define LOG_BASE(level, format, ...) \
     do { \
-        Log *log = Log::Istance(); \
-        if(log->isopen() && log->GetLevel() <= level) { \
+        Log *log = Log::instance(); \
+        if(log->isopen() && log->getLevel() <= level) { \
             log->write(level, format, ##__VA_ARGS__); \
             log->flush(); \
         }\

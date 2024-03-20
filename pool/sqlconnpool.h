@@ -24,7 +24,7 @@ private:
     ~SqlConnPool() {closePool(); }
 
     int MAX_CONN_;
-
+    std::mutex mtx_;
     SafeQueue<MYSQL *> connQue_;
     sem_t semId_;
 };
