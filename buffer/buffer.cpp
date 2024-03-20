@@ -5,100 +5,100 @@
 Buffer::Buffer(int initBuffSize) : buffer_(initBuffSize), readPos_(kCheapPrepend), writePos_(kCheapPrepend) {}
 
 // output buffer length
-size_t Buffer::WritableBytes() const {
+size_t Buffer::writableBytes() const {
     return buffer_.size() - writePos_;
 }
 
 // input buffer length
-size_t Buffer::ReadableBytes() const {
+size_t Buffer::readableBytes() const {
     return writePos_ - readPos_;
 }
 
 // prepend length
-size_t Buffer::PrependableBytes() const {
+size_t Buffer::prependableBytes() const {
     return readPos_;
 }
 
 // the first char to read
-const char* Buffer::Peek() const {
+const char* Buffer::peek() const {
     return &buffer_[readPos_];
 }
 
 // ensure the vector size for writing
-void Buffer::EnsureWritable(size_t len) {
-    if(len > WritableBytes()) {
-        MakeSpace_(len);
+void Buffer::ensureWritable(size_t len) {
+    if(len > writableBytes()) {
+        makeSpace_(len);
     }
-    assert(len <= WritableBytes());
+    assert(len <= writableBytes());
 }
 
 // move the writePos_ after writing
-void Buffer::HasWritten(size_t len) {
+void Buffer::hasWritten(size_t len) {
     writePos_ += len;
 }
 
 // move the readPos_ after reading
-void Buffer::Retrieve(size_t len) {
+void Buffer::retrieve(size_t len) {
     readPos_ += len;
 }
 
 // move the readPos_ to the end
-void Buffer::RetrieveUntil(const char* end) {
-    assert(Peek() <= end);
-    Retrieve(end - Peek());
+void Buffer::retrieveUntil(const char* end) {
+    assert(peek() <= end);
+    retrieve(end - peek());
 }
 
 // retrieve all data, then clear the buffer
-void Buffer::RetrieveAll() {
-    bzero(BeginPtr_(), buffer_.size());
+void Buffer::retrieveAll() {
+    bzero(beginPtr_(), buffer_.size());
     readPos_ = writePos_ = kCheapPrepend;
 }
 
 // retrieve input buffer and send string's type
-std::string Buffer::RetrieveAllToStr() {
-    std::string str(Peek(), ReadableBytes());
-    Retrieve(ReadableBytes());
+std::string Buffer::retrieveAllToStr() {
+    std::string str(peek(), readableBytes());
+    retrieve(readableBytes());
     return str;
 }
 
 // const ptr for writePos_
-const char* Buffer::BeginWriteConst() const {
+const char* Buffer::beginWriteConst() const {
     return &buffer_[writePos_];
 }
 
 // ptr for writePos_
-char* Buffer::BeginWrite() {
+char* Buffer::beginWrite() {
     return &buffer_[writePos_];
 }
 
 // push str in output buffer
-void Buffer::Append(const char* str, size_t len) {
+void Buffer::append(const char* str, size_t len) {
     assert(str);
-    EnsureWritable(len);
-    std::copy(str, str + len, BeginWrite());
+    ensureWritable(len);
+    std::copy(str, str + len, beginWrite());
 }
 
-void Buffer::Append(const std::string &str) {
-    Append(str.c_str(), str.size());
+void Buffer::append(const std::string &str) {
+    append(str.c_str(), str.size());
 }
 
-void Buffer::Append(const void* data, size_t len) {
-    Append(static_cast<const char*>(data), len);
+void Buffer::append(const void* data, size_t len) {
+    append(static_cast<const char*>(data), len);
 }
 
 // push another buf's input buffer in output buffer
-void Buffer::Append(const Buffer &buf) {
-    Append(buf.Peek(), buf.ReadableBytes());
+void Buffer::append(const Buffer &buf) {
+    append(buf.peek(), buf.readableBytes());
 }
 
 // push file in output buffer
-ssize_t Buffer::ReadFd(int fd, int* Errno) {
+ssize_t Buffer::readFd(int fd, int* Errno) {
     static constexpr int STACK_BUFFER_SIZE = 65535;
     char buff[STACK_BUFFER_SIZE]; // stack
     struct iovec iov[2];
-    size_t writable = WritableBytes();
+    size_t writable = writableBytes();
 
-    iov[0].iov_base = BeginWrite();
+    iov[0].iov_base = beginWrite();
     iov[0].iov_len = writable;
     iov[1].iov_base = buff;
     iov[1].iov_len = STACK_BUFFER_SIZE;
@@ -107,47 +107,47 @@ ssize_t Buffer::ReadFd(int fd, int* Errno) {
     if(len < 0) {
         *Errno = errno;
     } else if(static_cast<size_t>(len) <= writable) {
-        HasWritten(len);
+        hasWritten(len);
     } else {
         writePos_ = buffer_.size();
-        Append(buff, static_cast<size_t>(len - writable));
+        append(buff, static_cast<size_t>(len - writable));
     }
     return len;
 }
 
 // push input buffer in file
-ssize_t Buffer::WriteFd(int fd, int *Errno) {
-    ssize_t len = write(fd, Peek(), ReadableBytes());
+ssize_t Buffer::writeFd(int fd, int *Errno) {
+    ssize_t len = write(fd, peek(), readableBytes());
     if(len < 0) {
         *Errno = errno;
     } else {
-        Retrieve(len);
+        retrieve(len);
     }
     return len;
 }
 
-void Buffer::Prepend(const void* data, size_t len) {
-    assert(len <= PrependableBytes());
+void Buffer::prepend(const void* data, size_t len) {
+    assert(len <= prependableBytes());
     readPos_ -= len;
     const char* d = static_cast<const char*>(data);
-    std::copy(d, d + len, BeginPtr_() + readPos_);
+    std::copy(d, d + len, beginPtr_() + readPos_);
 }
 
-char* Buffer::BeginPtr_() {
+char* Buffer::beginPtr_() {
     return &buffer_[0];
 }
 
-const char* Buffer::BeginPtr_() const {
+const char* Buffer::beginPtr_() const {
     return &buffer_[0];
 }
 
-void Buffer::MakeSpace_(size_t len) {
-    if(PrependableBytes() + WritableBytes() < len) {
+void Buffer::makeSpace_(size_t len) {
+    if(prependableBytes() + writableBytes() < len) {
         buffer_.resize(writePos_ + len + 1);
     }
-    size_t readable = ReadableBytes();
-    std::copy(BeginPtr_() + readPos_, BeginPtr_() + writePos_, BeginPtr_());
+    size_t readable = readableBytes();
+    std::copy(beginPtr_() + readPos_, beginPtr_() + writePos_, beginPtr_());
     readPos_ = kCheapPrepend;
     writePos_ = readable;
-    assert(readable == ReadableBytes());
+    assert(readable == readableBytes());
 }

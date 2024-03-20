@@ -30,12 +30,16 @@ void Log::flush() {
     fflush(fp_); // clear file input buffer
 }
 
-Log* Log::Instance() {
+Log* Log::instance() {
     static Log log;
     return &log;
 }
 
-void Log::AsyncWrite_() {
+void Log::flushLogThread() {
+    Log::instance()->asyncWrite_();
+}
+
+void Log::asyncWrite_() {
     std::string str;
     while(deque_->pop(str)) {
         std::lock_guard<std::mutex> lock(mtx_);
@@ -52,7 +56,7 @@ void Log::init(int level, const char* path, const char* suffix, int maxQueCapaci
         isAsync_ = true;
         if(!deque_) {
             deque_ = std::make_unique<BlockQueue<std::string>>(BlockQueue<std::string>(maxQueCapacity));
-            writeThread_ = std::make_unique<std::thread>(std::thread(FlushLogThread));
+            writeThread_ = std::make_unique<std::thread>(std::thread(flushLogThread));
         }
     } else {
         isAsync_ = false;
@@ -68,7 +72,7 @@ void Log::init(int level, const char* path, const char* suffix, int maxQueCapaci
 
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        buff_.RetrieveAll(); // clear the buffer
+        buff_.retrieveAll(); // clear the buffer
         
         // reopen the file
         if(fp_) {
@@ -116,27 +120,27 @@ void Log::write(int level, const char *format, ...) {
     {
         std::lock_guard<std::mutex> lock(mtx_);
         ++lineCount_;
-        int n = snprintf(buff_.BeginWrite(), 128, "%d-%02d-%02d %02d:%02d:%02d:%02d.%06ld ",
+        int n = snprintf(buff_.beginWrite(), 128, "%d-%02d-%02d %02d:%02d:%02d:%02d.%06ld ",
                 t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, 
                 t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec);
         
-        buff_.HasWritten(n);
-        AppendLogLevelTitle_(level);
+        buff_.hasWritten(n);
+        appendLogLevelTitle_(level);
 
         va_start(vaList, format);
-        int m = vsnprintf(buff_.BeginWrite(), buff_.WritableBytes(), format, vaList);
+        int m = vsnprintf(buff_.beginWrite(), buff_.writableBytes(), format, vaList);
         va_end(vaList);
 
-        buff_.HasWritten(m);
-        buff_.Append("\n\0", 2);
+        buff_.hasWritten(m);
+        buff_.append("\n\0", 2);
         // asynchronous function(send log to block_queue)
         if(isAsync_ && deque_ && !deque_->full()) {
-            deque_->push_back(buff_.RetrieveAllToStr());
+            deque_->push_back(buff_.retrieveAllToStr());
         } else {
             // synchronous
-            fputs(buff_.Peek(), fp_);
+            fputs(buff_.peek(), fp_);
         }
-        buff_.RetrieveAll();
+        buff_.retrieveAll();
     }
 }
 
@@ -147,11 +151,11 @@ static char* logLevelName[] = {
     "[ERROR]: "
 };
 
-void Log::AppendLogLevelTitle_(int level) {
-    buff_.Append(logLevelName[level], 9);
+void Log::appendLogLevelTitle_(int level) {
+    buff_.append(logLevelName[level], 9);
 }
 
-int Log::Getlevel() {
+int Log::getlevel() {
     return level_;
 }
 

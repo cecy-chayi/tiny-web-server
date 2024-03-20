@@ -19,20 +19,20 @@ public:
                 const char *suffix = ".log",
                 int maxQueueCapacity = 1024);
 
-    static Log* Instance();
-    static void FlushLogThread(); // aio write log interface
+    static Log* instance();
+    static void flushLogThread(); // aio write log interface
 
     void write(int level, const char *format, ...); // output in format
     void flush();
 
-    int Getlevel();
+    int getlevel();
     void setLevel(int level);
     bool isopen() {return isOpen_; }
 private:
     Log();
-    void AppendLogLevelTitle_(int level);
+    void appendLogLevelTitle_(int level);
     virtual ~Log();
-    void AsyncWrite_(); // aio write specific function
+    void asyncWrite_(); // aio write specific function
 private:
     static const int LOG_PATH_LEN = 256; // max log path length
     static const int LOG_NAME_LEN = 256; // max log name length

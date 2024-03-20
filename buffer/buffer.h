@@ -15,40 +15,40 @@ public:
     Buffer(int initBuffSize = kInitialSize);
     ~Buffer() = default;
 
-    size_t WritableBytes() const;
-    size_t ReadableBytes() const;
-    size_t PrependableBytes() const;
+    size_t writableBytes() const;
+    size_t readableBytes() const;
+    size_t prependableBytes() const;
 
-    const char* Peek() const;
-    void EnsureWritable(size_t);
-    void HasWritten(size_t);
+    const char* peek() const;
+    void ensureWritable(size_t);
+    void hasWritten(size_t);
 
-    void Retrieve(size_t);
-    void RetrieveUntil(const char*);
+    void retrieve(size_t);
+    void retrieveUntil(const char*);
 
-    void  RetrieveAll();
-    std::string RetrieveAllToStr();
+    void  retrieveAll();
+    std::string retrieveAllToStr();
 
-    const char* BeginWriteConst() const;
-    char* BeginWrite();
+    const char* beginWriteConst() const;
+    char* beginWrite();
 
-    void Append(const std::string&);
-    void Append(const char*, size_t);
-    void Append(const void*, size_t);
-    void Append(const Buffer&);
+    void append(const std::string&);
+    void append(const char*, size_t);
+    void append(const void*, size_t);
+    void append(const Buffer&);
 
     // void PrependInt64(int64_t);
     // void PrependInt32(int32_t);
     // void PrependInt16(int16_t);
     // void PrependInt8(int8_t);
-    void Prepend(const void*, size_t);
+    void prepend(const void*, size_t);
 
-    ssize_t ReadFd(int, int*);
-    ssize_t WriteFd(int, int*);
+    ssize_t readFd(int, int*);
+    ssize_t writeFd(int, int*);
 private:
-    char* BeginPtr_();
-    const char* BeginPtr_() const;
-    void MakeSpace_(size_t len);
+    char* beginPtr_();
+    const char* beginPtr_() const;
+    void makeSpace_(size_t len);
 
     std::vector<char> buffer_;
     std::atomic<std::size_t> readPos_; // read index
