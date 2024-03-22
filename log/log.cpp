@@ -14,11 +14,13 @@ Log::~Log() {
         deque_->flush();
     }
     deque_->close();
-    writeThread_->join();
-    if(fp_) {
+    writeThread_->join(); 
+    {
         std::lock_guard<std::mutex> lock(mtx_);
-        flush();
-        fclose(fp_);
+        if(fp_) {
+            flush();
+            fclose(fp_);
+        }
     }
 }
 
@@ -52,15 +54,7 @@ void Log::init(int level, const char* path, const char* suffix, int maxQueCapaci
     level_ = level;
     path_ = path;
     suffix_ = suffix;
-    if(maxQueCapacity) { // non-zero means asynchronous
-        isAsync_ = true;
-        if(!deque_) {
-            deque_ = std::make_unique<BlockQueue<std::string>>(BlockQueue<std::string>(maxQueCapacity));
-            writeThread_ = std::make_unique<std::thread>(std::thread(flushLogThread));
-        }
-    } else {
-        isAsync_ = false;
-    }
+    MAX_LINES_ = MAX_LINES;
     lineCount_ = 0;
     time_t timer = time(nullptr); // current time
     struct tm t;
@@ -86,6 +80,16 @@ void Log::init(int level, const char* path, const char* suffix, int maxQueCapaci
         }
         assert(fp_ != nullptr);
     }
+
+    if(maxQueCapacity) { // non-zero means asynchronous
+        isAsync_ = true;
+        if(!deque_) {
+            deque_ = std::make_unique<BlockQueue<std::string>>(maxQueCapacity);
+            writeThread_ = std::make_unique<std::thread>(flushLogThread);
+        }
+    } else {
+        isAsync_ = false;
+    }
 }
 
 void Log::write(int level, const char *format, ...) {
@@ -96,31 +100,32 @@ void Log::write(int level, const char *format, ...) {
     localtime_r(&tSec, &t);
     va_list vaList;
 
-    if(toDay_ != t.tm_mday || (lineCount_ && lineCount_ % MAX_LINES_ == 0)) {
-        char newFile[LOG_NAME_LEN];
-        char tail[36]{0};
-        snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+        if(toDay_ != t.tm_mday || (lineCount_ && lineCount_ % MAX_LINES_ == 0)) {
+            char newFile[LOG_NAME_LEN];
+            char tail[36]{0};
+            snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
 
-        if(toDay_ != t.tm_mday) {
-            snprintf(newFile, LOG_NAME_LEN, "%s/%s%s", path_, tail, suffix_);
-        } else {
-            snprintf(newFile, LOG_NAME_LEN, "%s/%s-%d%s", path_, tail, (lineCount_ / MAX_LINES_), suffix_);
+            if(toDay_ != t.tm_mday) {
+                snprintf(newFile, LOG_NAME_LEN, "%s/%s%s", path_, tail, suffix_);
+            } else {
+                snprintf(newFile, LOG_NAME_LEN, "%s/%s-%d%s", path_, tail, (lineCount_ / MAX_LINES_), suffix_);
+            }
+            
+            {
+                std::lock_guard<std::mutex> lock(mtx_);
+                flush();
+                fclose(fp_);
+                fp_ = fopen(newFile, "a");
+                assert(fp_ != nullptr);
+            }
+            
         }
-
-        {
-            std::lock_guard<std::mutex> lock(mtx_);
-            flush();
-            fclose(fp_);
-            fp_ = fopen(newFile, "a");
-            assert(fp_ != nullptr);
-        }
-    }
     
     // generate the corresponding log in buffer
     {
         std::lock_guard<std::mutex> lock(mtx_);
         ++lineCount_;
-        int n = snprintf(buff_.beginWrite(), 128, "%d-%02d-%02d %02d:%02d:%02d:%02d.%06ld ",
+        int n = snprintf(buff_.beginWrite(), 128, "%d-%02d-%02d %02d:%02d:%02d.%06ld ",
                 t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, 
                 t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec);
         
@@ -133,6 +138,7 @@ void Log::write(int level, const char *format, ...) {
 
         buff_.hasWritten(m);
         buff_.append("\n\0", 2);
+        buff_.hasWritten(2);
         // asynchronous function(send log to block_queue)
         if(isAsync_ && deque_ && !deque_->full()) {
             deque_->push_back(buff_.retrieveAllToStr());
@@ -144,15 +150,18 @@ void Log::write(int level, const char *format, ...) {
     }
 }
 
-static char* logLevelName[] = {
-    "[debug]: ",
-    "[info] : ",
-    "[WARN] : ",
-    "[ERROR]: "
-};
+extern "C" {
+    static const char* logLevelName[] = {
+        "[debug]: ",
+        "[info] : ",
+        "[WARN] : ",
+        "[ERROR]: "
+    };
+}
 
 void Log::appendLogLevelTitle_(int level) {
     buff_.append(logLevelName[level], 9);
+    buff_.hasWritten(9);
 }
 
 int Log::getLevel() {

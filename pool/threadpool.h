@@ -25,8 +25,8 @@ public:
     template<typename F, typename ...Args>
     auto submit(F &&f, Args&& ...args) -> std::future<decltype(f(args...))> {
         std::function<decltype(f(args...))()> func = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-        auto task_ptr = std::make_unique<std::packaged_task<decltype(f(args...))()>> (func);
-        auto wrap_func = [task_ptr]() {
+        auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()>> (func);
+        std::function<void()> wrap_func = [task_ptr]() {
             (*task_ptr)();
         };
         que_.enqueue(wrap_func);
