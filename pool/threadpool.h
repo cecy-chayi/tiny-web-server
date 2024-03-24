@@ -8,6 +8,7 @@
 #include<thread>
 #include<assert.h>
 #include<future>
+#include "log.h"
 #include "safequeue.h"
 
 class ThreadPool {
