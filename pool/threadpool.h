@@ -41,13 +41,27 @@ public:
     }
 
     void shutdown() {
+        while(!que_.empty()) {
+            cond_lock_.notify_one();
+        }
+        close();
+    }
+
+    void close() {
+        bool fir = 0;
         {
             std::lock_guard<std::mutex> lock(mtx_);
-            isClosed = true;
+            if(!isClosed) {
+                fir = 1;
+                isClosed = true;
+            }
             cond_lock_.notify_all();
         }
         for(int i = 0; i < threads_.size(); i++) if(threads_.at(i).joinable()) { 
             threads_.at(i).join();
+        }
+        if(fir) {
+            LOG_INFO("thread_pool has been shutdown...");
         }
     }
 private:

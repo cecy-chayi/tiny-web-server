@@ -157,6 +157,11 @@ size_t BlockQueue<T>::capacity() {
     return capacity_;
 }
 
+template<typename T>
+size_t BlockQueue<T>::size() {
+    return deq_.size();
+}
+
 // flush means sb. should comsume the item
 template<typename T>
 void BlockQueue<T>::flush() {

@@ -32,7 +32,7 @@ void testLog() {
 
 void threadLogTask(int i, int cnt) {
     for(int j = 0; j < 10000; j++) {
-        LOG_BASE(i, "PID:[%04d]====== %05d =========== ", gettid(), cnt++);
+        LOG_BASE(i, "PID:[%04d]====== %06d =========== ", gettid(), cnt++);
     }
 }
 
@@ -40,7 +40,7 @@ void testThreadPool() {
     Log::instance()->init(0, "./testLog3", ".log", 5000);
     ThreadPool threadPool(6);
     threadPool.init();
-    for(int i = 0; i < 20; i++) {
+    for(int i = 0; i < 12; i++) {
         threadPool.submit(threadLogTask, i % 4, i * 100000);
     }
     threadPool.shutdown();

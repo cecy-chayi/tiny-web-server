@@ -60,8 +60,8 @@ void Log::init(int level, const char* path, const char* suffix, int maxQueCapaci
     struct tm t;
     localtime_r(&timer, &t);
     char fileName[LOG_NAME_LEN] = {0};
-    snprintf(fileName, LOG_NAME_LEN - 1, "%s/%04d_%02d_%02d%s", 
-            path_, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix_);
+    snprintf(fileName, LOG_NAME_LEN - 1, "%s/%04d_%02d_%02d-%d%s", 
+            path_, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, 0, suffix_);
     toDay_ = t.tm_mday;
 
     {
@@ -105,11 +105,7 @@ void Log::write(int level, const char *format, ...) {
             char tail[36]{0};
             snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
 
-            if(toDay_ != t.tm_mday) {
-                snprintf(newFile, LOG_NAME_LEN, "%s/%s%s", path_, tail, suffix_);
-            } else {
-                snprintf(newFile, LOG_NAME_LEN, "%s/%s-%d%s", path_, tail, (lineCount_ / MAX_LINES_), suffix_);
-            }
+            snprintf(newFile, LOG_NAME_LEN, "%s/%s-%d%s", path_, tail, (lineCount_ / MAX_LINES_), suffix_);
             
             {
                 std::lock_guard<std::mutex> lock(mtx_);
