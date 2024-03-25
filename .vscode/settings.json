@@ -54,6 +54,13 @@
         "stop_token": "cpp",
         "thread": "cpp",
         "future": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "bitset": "cpp",
+        "map": "cpp",
+        "unordered_set": "cpp",
+        "regex": "cpp",
+        "sstream": "cpp",
+        "buffer": "cpp",
+        "netfwd": "cpp"
     }
 }
