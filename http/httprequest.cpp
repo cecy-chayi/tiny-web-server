@@ -10,7 +10,7 @@ const std::unordered_map<std::string, int> HttpRequest::DEFAULT_HTML_TAG {
     {"/login.html", 1},
 };
 
-void HttpRequest::Init() {
+void HttpRequest::init() {
     method_ = path_ = version_ = body_ = "";
     state_ = PARSE_STATE::REQUEST_LINE;
     header_.clear();

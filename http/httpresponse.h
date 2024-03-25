@@ -18,7 +18,7 @@ public:
     void init(const std::string &srcDir, std::string &path, bool isKeepAlive = false, int code = -1);
     void makeResponse(Buffer &buff);
     void unmapFile();
-    char* File();
+    char* file();
     size_t fileLen() const;
     void errorContent(Buffer &buff, std::string message);
     int code() const {

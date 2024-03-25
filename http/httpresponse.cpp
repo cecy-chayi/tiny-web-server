@@ -47,6 +47,19 @@ HttpResponse::~HttpResponse() {
     unmapFile();
 }
 
+void HttpResponse::init(const std::string &srcDir, std::string &path, bool isKeepAlive, int code) {
+    assert(srcDir.size());
+    if(mmFile_) {
+        unmapFile(); 
+    }
+    code_ = code;
+    isKeepAlive_ = isKeepAlive;
+    path_ = path;
+    srcDir_ = srcDir;
+    mmFile_ = nullptr;
+    mmFileStat_ = {0};
+}
+
 void HttpResponse::makeResponse(Buffer &buff) {
     if(stat((srcDir_ + path_).data(), &mmFileStat_) < 0 || S_ISDIR(mmFileStat_.st_mode)) {
     // unaccept directory 
@@ -63,7 +76,7 @@ void HttpResponse::makeResponse(Buffer &buff) {
     addContent_(buff);
 }
 
-char* HttpResponse::File() {
+char* HttpResponse::file() {
     return mmFile_;
 }
 

@@ -103,6 +103,7 @@ ssize_t Buffer::readFd(int fd, int* Errno) {
     iov[1].iov_base = buff;
     iov[1].iov_len = STACK_BUFFER_SIZE;
 
+    // scatter read, reduce the syscall count
     ssize_t len = readv(fd, iov, 2);
     if(len < 0) {
         *Errno = errno;

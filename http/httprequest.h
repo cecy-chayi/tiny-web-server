@@ -21,10 +21,10 @@ public:
         FINISH,
     };
 
-    HttpRequest() {Init(); }
+    HttpRequest() {init(); }
     ~HttpRequest() = default;
 
-    void Init();
+    void init();
     bool parse(Buffer &buff);
 
     std::string path() const;
