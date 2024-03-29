@@ -189,7 +189,6 @@ bool HttpRequest::userVerify(const std::string &name, const std::string &pwd, bo
     
     bool flag = false;
     char order[256]{0};
-    MYSQL_FIELD *fields = nullptr;
     MYSQL_RES *res = nullptr;
 
     if(!isLogin) {
@@ -205,7 +204,6 @@ bool HttpRequest::userVerify(const std::string &name, const std::string &pwd, bo
     }
 
     res = mysql_store_result(sql);
-    fields = mysql_fetch_field(res);
 
     while(MYSQL_ROW row = mysql_fetch_row(res)) {
         LOG_DEBUG("MYSQL ROW: %s %s", row[0], row[1]);

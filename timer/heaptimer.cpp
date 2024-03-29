@@ -24,7 +24,7 @@ void HeapTimer::shiftup_(size_t i) {
 // ture: shift down success; false: don't 
 bool HeapTimer::shiftdown_(size_t i) {
     assert(0 <= i && i < heap_.size());
-    int n = heap_.size();
+    size_t n = heap_.size();
     size_t index = i;
     size_t child = i * 2 + 1;
     while(child < n) {

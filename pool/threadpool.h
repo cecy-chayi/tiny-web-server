@@ -8,7 +8,7 @@
 #include<thread>
 #include<assert.h>
 #include<future>
-#include "log.h"
+#include "../log/log.h"
 #include "safequeue.h"
 
 class ThreadPool {
@@ -58,7 +58,7 @@ public:
             }
             cond_lock_.notify_all();
         }
-        for(int i = 0; i < threads_.size(); i++) if(threads_.at(i).joinable()) { 
+        for(int i = 0; i < (int) threads_.size(); i++) if(threads_.at(i).joinable()) { 
             threads_.at(i).join();
         }
         if(fir) {

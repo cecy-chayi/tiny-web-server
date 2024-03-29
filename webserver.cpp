@@ -25,7 +25,7 @@ WebServer::WebServer(
     }
 
     if(openLog) {
-        Log::instance()->init(logLevel, "./log", ".log", logQueSize);
+        Log::instance()->init(logLevel, "./testlog", ".log", logQueSize);
         if(isClose_) { 
             LOG_ERROR("========== Server init error! ==========");
         } else {
@@ -151,14 +151,14 @@ void WebServer::dealListen_() {
 void WebServer::dealRead_(HttpConn* client) {
     assert(client);
     extendTime_(client);
-    threadpool_->submit(std::bind(WebServer::onRead_, this, client));
+    threadpool_->submit(std::bind(&WebServer::onRead_, this, client));
 }
 
 // process the write event, append the write task on threadpool
 void WebServer::dealWrite_(HttpConn* client) {
     assert(client);
     extendTime_(client);
-    threadpool_->submit(std::bind(WebServer::onWrite_, this, client));
+    threadpool_->submit(std::bind(&WebServer::onWrite_, this, client));
 }
 
 void WebServer::extendTime_(HttpConn* client) {
