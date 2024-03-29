@@ -46,6 +46,7 @@ WebServer::~WebServer() {
     isClose_ = true;
     free(srcDir_);
     SqlConnPool::instance()->closePool();
+    threadpool_->shutdown();
 }
 
 void WebServer::initEventMode_(int trigMode) {
@@ -150,14 +151,14 @@ void WebServer::dealListen_() {
 void WebServer::dealRead_(HttpConn* client) {
     assert(client);
     extendTime_(client);
-    threadpool_->addTask(std::bind(WebServer::onRead_, this, client));
+    threadpool_->submit(std::bind(WebServer::onRead_, this, client));
 }
 
 // process the write event, append the write task on threadpool
 void WebServer::dealWrite_(HttpConn* client) {
     assert(client);
     extendTime_(client);
-    threadpool_->addTask(std::bind(WebServer::onWrite_, this, client));
+    threadpool_->submit(std::bind(WebServer::onWrite_, this, client));
 }
 
 void WebServer::extendTime_(HttpConn* client) {
