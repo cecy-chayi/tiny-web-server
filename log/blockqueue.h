@@ -36,22 +36,20 @@ private:
 };
 
 template<typename T>
-BlockQueue<T>::BlockQueue(size_t maxSize) : capacity_(maxSize), isClose_(false) {
+BlockQueue<T>::BlockQueue(size_t maxSize) : capacity_(maxSize) {
     assert(maxSize > 0);
+    isClose_ = false;
 }
 
 template<typename T>
 BlockQueue<T>::~BlockQueue() {
-    if(!isClose_) close();
+    close();
 }
 
 template<typename T>
 void BlockQueue<T>::close() {
-    {
-        std::lock_guard<std::mutex> lock(mtx_);
-        isClose_ = true;
-    }
     clear();
+    isClose_ = true;
     condConsumer_.notify_all();
     condProducer_.notify_all();
 }
@@ -78,9 +76,7 @@ template<typename T>
 void BlockQueue<T>::push_back(const T& item) {
     // condition_variable usually needs to be used with unique_lock
     std::unique_lock<std::mutex> lock(mtx_);
-    if(isClose_) return;
     while(deq_.size() >= capacity_) {
-        if(isClose_) return;
         condProducer_.wait(lock);
     }
     deq_.push_back(item);
@@ -90,9 +86,7 @@ void BlockQueue<T>::push_back(const T& item) {
 template<typename T>
 void BlockQueue<T>::push_front(const T& item) {
     std::unique_lock<std::mutex> lock(mtx_);
-    if(isClose_) return;
     while(deq_.size() >= capacity_) {
-        if(isClose_) return;
         condProducer_.wait(lock);
     }
     deq_.push_front(item);
@@ -102,13 +96,7 @@ void BlockQueue<T>::push_front(const T& item) {
 template<typename T>
 bool BlockQueue<T>::pop(T &item) {
     std::unique_lock<std::mutex> lock(mtx_);
-    if(isClose_) {
-        return false;
-    }
     while(deq_.empty()) {
-        if(isClose_) {
-            return false;
-        }
         condConsumer_.wait(lock);
     }
     item = std::move(deq_.front());
@@ -120,17 +108,14 @@ bool BlockQueue<T>::pop(T &item) {
 template<typename T>
 bool BlockQueue<T>::pop(T &item, int timeout) {
     std::unique_lock<std::mutex> lock(mtx_);
-    if(isClose_) {
-        return false;
-    }
     while(deq_.empty()) {
-        if(isClose_) {
-            return false;
-        }
         if(condConsumer_.wait_for(lock, std::chrono::seconds(timeout))
             == std::cv_status::timeout) {
                 return false;
             }
+        if(isClose_) {
+            return false;
+        }
     }
     item = std::move(deq_.front());
     deq_.pop_front();
@@ -141,24 +126,24 @@ bool BlockQueue<T>::pop(T &item, int timeout) {
 template<typename T>
 T BlockQueue<T>::front() {
     std::unique_lock<std::mutex> lock(mtx_);
-    assert(!isClose_ && !deq_.empty());
     return std::move(deq_.front());
 }
 
 template<typename T>
 T BlockQueue<T>::back() {
     std::unique_lock<std::mutex> lock(mtx_);
-    assert(!isClose_ && !deq_.empty());
     return std::move(deq_.back());
 }
 
 template<typename T>
 size_t BlockQueue<T>::capacity() {
+    std::lock_guard<std::mutex> lock(mtx_);
     return capacity_;
 }
 
 template<typename T>
 size_t BlockQueue<T>::size() {
+    std::lock_guard<std::mutex> lock(mtx_);
     return deq_.size();
 }
 

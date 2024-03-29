@@ -37,12 +37,6 @@ public:
     void append(const void*, size_t);
     void append(const Buffer&);
 
-    // void PrependInt64(int64_t);
-    // void PrependInt32(int32_t);
-    // void PrependInt16(int16_t);
-    // void PrependInt8(int8_t);
-    void prepend(const void*, size_t);
-
     ssize_t readFd(int, int*);
     ssize_t writeFd(int, int*);
 private:

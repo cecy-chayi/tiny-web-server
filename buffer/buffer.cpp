@@ -32,7 +32,7 @@ void Buffer::ensureWritable(size_t len) {
     assert(len <= writableBytes());
 }
 
-// move the writePos_ after writing
+// move the writePos_ after writing, use in append
 void Buffer::hasWritten(size_t len) {
     writePos_ += len;
 }
@@ -76,6 +76,7 @@ void Buffer::append(const char* str, size_t len) {
     assert(str);
     ensureWritable(len);
     std::copy(str, str + len, beginWrite());
+    hasWritten(len);
 }
 
 void Buffer::append(const std::string &str) {
@@ -108,7 +109,7 @@ ssize_t Buffer::readFd(int fd, int* Errno) {
     if(len < 0) {
         *Errno = errno;
     } else if(static_cast<size_t>(len) <= writable) {
-        hasWritten(len);
+        writePos_ += len;
     } else {
         writePos_ = buffer_.size();
         append(buff, static_cast<size_t>(len - writable));
@@ -127,13 +128,6 @@ ssize_t Buffer::writeFd(int fd, int *Errno) {
     return len;
 }
 
-void Buffer::prepend(const void* data, size_t len) {
-    assert(len <= prependableBytes());
-    readPos_ -= len;
-    const char* d = static_cast<const char*>(data);
-    std::copy(d, d + len, beginPtr_() + readPos_);
-}
-
 char* Buffer::beginPtr_() {
     return &buffer_[0];
 }
@@ -145,10 +139,11 @@ const char* Buffer::beginPtr_() const {
 void Buffer::makeSpace_(size_t len) {
     if(prependableBytes() + writableBytes() < len) {
         buffer_.resize(writePos_ + len + 1);
+    } else {
+        size_t readable = readableBytes();
+        std::copy(beginPtr_() + readPos_, beginPtr_() + writePos_, beginPtr_());
+        readPos_ = kCheapPrepend;
+        writePos_ = readable;
+        assert(readable == readableBytes());
     }
-    size_t readable = readableBytes();
-    std::copy(beginPtr_() + readPos_, beginPtr_() + writePos_, beginPtr_());
-    readPos_ = kCheapPrepend;
-    writePos_ = readable;
-    assert(readable == readableBytes());
 }
