@@ -8,97 +8,57 @@
 #include<thread>
 #include<assert.h>
 #include<future>
-#include "log.h"
-#include "safequeue.h"
 
 class ThreadPool {
 public:
-    explicit ThreadPool(const int n_threads = 4) : threads_(std::vector<std::thread>(n_threads)), isClosed(false) {}
-    ThreadPool& operator = (const ThreadPool &) = delete;
-    ThreadPool& operator = (ThreadPool &&) = delete;
-    ThreadPool(const ThreadPool &) = delete;
-    ThreadPool(ThreadPool &&) = delete;
+    ThreadPool() = default;
+    ThreadPool(ThreadPool&&) = default;
+
+    explicit ThreadPool(int threadCount = 8) : pool_(std::make_shared<Pool>()) {
+        assert(threadCount > 0);
+        for(int i = 0; i < threadCount; i++) {
+            std::thread([this]() {
+                std::unique_lock<std::mutex> lock(pool_->mtx_);
+                while(true) {
+                    if(!pool_->tasks.empty()) {
+                        auto task = std::move(pool_->tasks.front());
+                        pool_->tasks.pop();
+                        lock.unlock();
+                        task();
+                        lock.lock();
+                    } else if(pool_->isClosed) {
+                        break;
+                    } else {
+                        pool_->cond_.wait(lock);
+                    }
+                }
+            }).detach();
+        }
+    }
 
     ~ThreadPool() {
-        shutdown();
+        if(pool_) {
+            std::lock_guard<std::mutex> lock(pool_->mtx_);
+            pool_->isClosed = true;
+        }
+        pool_->cond_.notify_all();
     }
 
-    template<typename F, typename ...Args>
-    auto submit(F &&f, Args&& ...args) -> std::future<decltype(f(args...))> {
-        std::function<decltype(f(args...))()> func = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-        auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()>> (func);
-        std::function<void()> wrap_func = [task_ptr]() {
-            (*task_ptr)();
-        };
-        que_.enqueue(wrap_func);
-        cond_lock_.notify_one();
-        return task_ptr->get_future();
-    };
-    
-    void init() {
-        for(int i = 0; i < (int) threads_.size(); i++) {
-            threads_.at(i) = std::thread(ThreadWorker(this, i));
-        }
+    template<typename T>
+    void addTask(T &&task) {
+        std::unique_lock<std::mutex> lock(pool_->mtx_);
+        pool_->tasks.emplace(std::forward<T>(task));
+        pool_->cond_.notify_one();
     }
 
-    void shutdown() {
-        while(!que_.empty()) {
-            cond_lock_.notify_one();
-        }
-        close();
-    }
-
-    void close() {
-        bool fir = 0;
-        {
-            std::lock_guard<std::mutex> lock(mtx_);
-            if(!isClosed) {
-                fir = 1;
-                isClosed = true;
-            }
-            cond_lock_.notify_all();
-        }
-        for(int i = 0; i < threads_.size(); i++) if(threads_.at(i).joinable()) { 
-            threads_.at(i).join();
-        }
-        if(fir) {
-            LOG_INFO("thread_pool has been shutdown...");
-        }
-    }
 private:
-    class ThreadWorker {
-    public:
-        ThreadWorker(ThreadPool *pool, const int id) : pool_(pool), id_(id) {}
-        void operator()() {
-            std::function<void()> func;
-            bool dequeued;
-            while(true) {
-                {
-                    std::unique_lock<std::mutex> lock(pool_->mtx_); 
-                    if(pool_->isClosed) {
-                        break;
-                    }
-                    if(pool_->que_.empty()) {
-                        pool_->cond_lock_.wait(lock);
-                    }
-                    dequeued = pool_->que_.dequeue(func);
-                }
-                if(dequeued)
-                    func();
-            }
-        }
-    private:
-        int id_;
-        ThreadPool *pool_;
+    struct Pool {
+        std::mutex mtx_;
+        std::condition_variable cond_;
+        bool isClosed;
+        std::queue<std::function<void()>> tasks;
     };
-
-    bool isClosed;
-    SafeQueue<std::function<void()>> que_; // task queue
-    std::mutex mtx_;
-    std::condition_variable cond_lock_;
-    std::vector<std::thread> threads_;
+    std::shared_ptr<Pool> pool_;
 };
-
-
 
 #endif

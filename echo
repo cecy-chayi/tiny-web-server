@@ -1,1 +1,0 @@
-rm -rf bin/buffer/*.cpp log/*.cpp pool/*.cpp timer/*.cpp http/*.cpp epoller/*.cpp webserver.cpp main.cpp server

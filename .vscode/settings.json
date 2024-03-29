@@ -62,5 +62,6 @@
         "sstream": "cpp",
         "buffer": "cpp",
         "netfwd": "cpp"
-    }
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
 }
