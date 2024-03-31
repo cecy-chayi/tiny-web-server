@@ -9,7 +9,6 @@ WebServer::WebServer(
     isClose_(false), timer_(std::make_unique<HeapTimer>()),
         threadpool_(std::make_unique<ThreadPool>(threadNum)),
         epoller_(std::make_unique<Epoller>()) {
-
     srcDir_ = getcwd(nullptr, 256);
     assert(srcDir_);
     strcat(srcDir_, "/resources/");
@@ -55,7 +54,10 @@ void WebServer::initEventMode_(int trigMode) {
     {
     case 0:
         break;
-    case 1-2:
+    case 1:
+        connEvent_ |= EPOLLET;
+        break;
+    case 2:
         listenEvent_ |= EPOLLET;
         break;
     default:
@@ -112,7 +114,7 @@ void WebServer::sendError_(int fd, const char* info) {
 
 void WebServer::closeConn_(HttpConn* client) {
     assert(client);
-    LOG_INFO("Client[%d] quit!", client->getFd());
+    LOG_INFO("thread no: %d, Client[%d] quit!", gettid(), client->getFd());
     epoller_->delFd(client->getFd());
     client->close();
 }
@@ -182,7 +184,7 @@ void WebServer::onRead_(HttpConn* client) {
 }
 
 void WebServer::onProcess(HttpConn* client) {
-    // 
+    // call function process to process the business logic
     if(client->process()) {
         // modify the event after write
         epoller_->modFd(client->getFd(), connEvent_ | EPOLLOUT);
@@ -217,7 +219,7 @@ bool WebServer::initSocket_() {
     int ret;
     struct sockaddr_in addr;
     if(port_ > 65535 || port_ < 1024) {
-        LOG_ERROR("Port: %d error!", port_);
+        LOG_ERROR("Port:%d error!", port_);
         return false;
     }
     addr.sin_family = AF_INET;
@@ -265,7 +267,7 @@ bool WebServer::initSocket_() {
         return false;
     }
 
-    // accept queue size: min(6, somaxconn)
+    // accept queue size: min(backlog = 6, somaxconn)
     ret = listen(listenFd_, 6);
     if(ret < 0) {
         LOG_ERROR("Listen port: %d error!", port_);
