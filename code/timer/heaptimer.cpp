@@ -26,8 +26,8 @@ void HeapTimer::shiftup_(size_t i) {
 bool HeapTimer::shiftdown_(size_t i, size_t n) {
     assert(0 <= i && i < heap_.size());
     assert(0 <= n && n <= heap_.size());
-    size_t index = i;
-    size_t child = i * 2 + 1;
+    auto index = i;
+    auto child = i * 2 + 1;
     while(child < n) {
         if(child + 1 < n && heap_[child + 1] < heap_[child]) {
             child++;
@@ -49,7 +49,7 @@ void HeapTimer::del_(size_t index) {
     assert(tmp <= n);
     // if element at the end of queue, 
     // there is no need to move.
-    if(index != n) {
+    if(index < heap_.size() - 1) {
         swapNode_(tmp, heap_.size() - 1);
         if(!shiftdown_(tmp, n)) {
             shiftup_(tmp);
@@ -103,11 +103,8 @@ void HeapTimer::tick() {
         if(std::chrono::duration_cast<MS>(node.expires - Clock::now()).count() > 0) {
             break;
         }
-
         node.callbackFun();
-        LOG_DEBUG("pop before");
         pop();
-        LOG_DEBUG("pop after");
     }
 }
 

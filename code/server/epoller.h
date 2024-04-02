@@ -20,7 +20,7 @@ public:
     uint32_t getEvents(size_t i) const;
 private:
     int epollFd_;
-    std::vector<struct epoll_event> events;
+    std::vector<struct epoll_event> events_;
 };
 
 #endif

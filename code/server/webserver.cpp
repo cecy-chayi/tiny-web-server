@@ -9,6 +9,7 @@ WebServer::WebServer(
     isClose_(false), timer_(std::make_unique<HeapTimer>()),
         threadpool_(std::make_unique<ThreadPool>(threadNum)),
         epoller_(std::make_unique<Epoller>()) {
+            
     srcDir_ = getcwd(nullptr, 256);
     assert(srcDir_);
     strcat(srcDir_, "/resources/");
@@ -24,7 +25,7 @@ WebServer::WebServer(
     }
 
     if(openLog) {
-        Log::instance()->init(logLevel, "./testlog", ".log", logQueSize);
+        Log::instance()->init(logLevel, "./log", ".log", logQueSize);
         if(isClose_) { 
             LOG_ERROR("========== Server init error! ==========");
         } else {
@@ -48,8 +49,8 @@ WebServer::~WebServer() {
 }
 
 void WebServer::initEventMode_(int trigMode) {
-    listenEvent_ = EPOLLHUP; // socket close ?
-    connEvent_ = EPOLLONESHOT | EPOLLRDHUP;
+    listenEvent_ = EPOLLRDHUP;    
+    connEvent_ = EPOLLONESHOT | EPOLLRDHUP;    
     switch (trigMode)
     {
     case 0:
@@ -59,6 +60,10 @@ void WebServer::initEventMode_(int trigMode) {
         break;
     case 2:
         listenEvent_ |= EPOLLET;
+        break;
+    case 3:
+        listenEvent_ |= EPOLLET;
+        connEvent_ |= EPOLLET;
         break;
     default:
         listenEvent_ |= EPOLLET;
@@ -72,7 +77,9 @@ void WebServer::start() {
     int timeMS = -1; // block
     if(!isClose_) {
         LOG_INFO("========== Server start ==========");
+        std::cout << "========== Server start ==========" << std::endl;
     }
+    std::string opt;
     while(!isClose_) {
         if(timeoutMS_ > 0) {
             // get the next timeout waiting event
@@ -87,14 +94,13 @@ void WebServer::start() {
             uint32_t events = epoller_->getEvents(i);
             if(fd == listenFd_) {
                 dealListen_();
-            } else if(events & (EPOLLRDHUP || EPOLLHUP || EPOLLERR)) {
-                assert(users_.count(fd));
+            } else if(events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
                 closeConn_(&users_[fd]);
             } else if(events & EPOLLIN) {
-                assert(users_.count(fd));
+                assert(users_.count(fd) > 0);
                 dealRead_(&users_[fd]);
             } else if(events & EPOLLOUT) {
-                assert(users_.count(fd));
+                assert(users_.count(fd) > 0);
                 dealWrite_(&users_[fd]);
             } else {
                 LOG_ERROR("Unexpected event");
@@ -114,7 +120,7 @@ void WebServer::sendError_(int fd, const char* info) {
 
 void WebServer::closeConn_(HttpConn* client) {
     assert(client);
-    LOG_INFO("thread no: %d, Client[%d] quit!", gettid(), client->getFd());
+    LOG_INFO("Client[%d] quit!", client->getFd());
     epoller_->delFd(client->getFd());
     client->close();
 }
@@ -262,7 +268,7 @@ bool WebServer::initSocket_() {
 
     ret = bind(listenFd_, (struct sockaddr *)&addr, sizeof(addr));
     if(ret < 0) {
-        LOG_ERROR("Bind Port: %d error!", port_);
+        LOG_ERROR("Bind Port:%d error!", port_);
         close(listenFd_);
         return false;
     }

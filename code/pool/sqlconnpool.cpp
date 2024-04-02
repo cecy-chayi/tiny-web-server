@@ -10,7 +10,8 @@ void SqlConnPool::init(const char *host, int port,
                 const char *dbName, int connSize) {
     assert(connSize > 0);
     for(int i = 0; i < connSize; i++) {
-        MYSQL *conn = mysql_init(nullptr);
+        MYSQL *conn = nullptr;
+        conn = mysql_init(conn);
         if(!conn) {
             LOG_ERROR("MySql Init Error...");
             assert(conn);

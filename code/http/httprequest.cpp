@@ -12,7 +12,7 @@ const std::unordered_map<std::string, int> HttpRequest::DEFAULT_HTML_TAG {
 
 void HttpRequest::init() {
     method_ = path_ = version_ = body_ = "";
-    state_ = PARSE_STATE::REQUEST_LINE;
+    state_ = REQUEST_LINE;
     header_.clear();
     post_.clear();
 }
@@ -30,25 +30,25 @@ bool HttpRequest::parse(Buffer &buff) {
         return false;
     }
     // read data
-    while(buff.readableBytes() && state_ != PARSE_STATE::FINISH) {
+    while(buff.readableBytes() && state_ != FINISH) {
         // split by "\r\n"
         const char* lineEnd = std::search(buff.peek(), buff.beginWriteConst(), CRLF, CRLF + 2);
         // turn into string
         std::string line(buff.peek(), lineEnd);
         switch (state_) { // DFA
-        case PARSE_STATE::REQUEST_LINE:
+        case REQUEST_LINE:
             if(!parseRequestLine_(line)) {
                 return false;
             }
             parsePath_();
             break;
-        case PARSE_STATE::HEADERS:
+        case HEADERS:
             parseHeader_(line);
             if(buff.readableBytes() <= 2) {
-                state_ = PARSE_STATE::FINISH;
+                state_ = FINISH;
             }
             break;
-        case PARSE_STATE::BODY:
+        case BODY:
             parseBody_(line);
             break;
         default:
@@ -87,7 +87,7 @@ bool HttpRequest::parseRequestLine_(const std::string &line) {
         method_ = subMatch[1];
         path_ = subMatch[2];
         version_ = subMatch[3];
-        state_ = PARSE_STATE::HEADERS;
+        state_ = HEADERS;
         return true;
     }
     LOG_ERROR("RequestLine Error");
@@ -100,21 +100,21 @@ void HttpRequest::parseHeader_(const std::string &line) {
     if(std::regex_match(line, subMatch, pattern)) {
         header_[subMatch[1]] = subMatch[2];
     } else {
-        state_ = PARSE_STATE::BODY;
+        state_ = BODY;
     }
 }
 
 void HttpRequest::parseBody_(const std::string &line) {
     body_ = line;
     parsePost_();
-    state_ = PARSE_STATE::FINISH;
+    state_ = FINISH;
     LOG_DEBUG("Body:%s, len: %d", line.c_str(), line.size());
 }
 
 int HttpRequest::converHex(char ch) {
     if('A' <= ch && ch <= 'F') return ch - 'A' + 10;
     if('a' <= ch && ch <= 'f') return ch - 'a' + 10;
-    return ch - '0'; // ch - '0' ?
+    return ch; // ch - '0' ?
 }
 
 // process the post request
@@ -235,6 +235,7 @@ bool HttpRequest::userVerify(const std::string &name, const std::string &pwd, bo
             flag = false;
         }
     }
+    SqlConnPool::instance()->freeConn(sql);
     LOG_DEBUG("User verify success");
     Log::instance()->flush();
     return flag;
@@ -258,6 +259,14 @@ std::string HttpRequest::version() const {
 
 std::string HttpRequest::getPost(const std::string &key) const {
     assert(key.size());
+    if(post_.count(key)) {
+        return post_.find(key)->second;
+    }
+    return "";
+}
+
+std::string HttpRequest::getPost(const char* key) const {
+    assert(key != nullptr);
     if(post_.count(key)) {
         return post_.find(key)->second;
     }

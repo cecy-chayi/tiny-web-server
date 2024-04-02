@@ -85,7 +85,7 @@ size_t HttpResponse::fileLen() const {
 }
 
 void HttpResponse::errorHtml_() {
-    if(CODE_STATUS.count(code_)) {
+    if(CODE_PATH.count(code_)) {
         path_ = CODE_PATH.find(code_)->second;
         stat((srcDir_ + path_).data(), &mmFileStat_);
     }
